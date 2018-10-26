@@ -112,7 +112,7 @@ exports.getAll = (req, res) => {
 		return;
 	}
 
-	const testFolder = '/Users/i347143/work/applogs/lq3/';
+	const testFolder = '/';
 	const fs = require('fs');
 
 	fs.readdirSync(testFolder).forEach(file => {
@@ -142,7 +142,7 @@ exports.getProxy = (req, res) => {
 		return;
 	}
 
-	const testFolder = '/Users/i347143/work/applogs/lq3/';
+	const testFolder = '/';
 	const fs = require('fs');
 
 	fs.readdirSync(testFolder).forEach(file => {
