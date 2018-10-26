@@ -6,7 +6,7 @@ var clusterMap = new HashMap();
 var modjkMap = new HashMap();
 
 // var follow = require('text-file-follower');
-// var follower = follow('../../../../robot285/modjk.log', { persistent: true,catchup: true});
+// var follower = follow('../test.log', { persistent: true,catchup: true});
 
 // follower.on('line', function(filename, line) {
 // 	var res = line.split(" ");
