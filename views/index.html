@@ -1,0 +1,341 @@
+<!DOCTYPE HTML>
+
+<html>
+	<head>
+		<title>Apache Log Comparision</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<script src="/static/js/jqueryAjax.js"></script>
+		<script src="https://code.highcharts.com/highcharts.js"></script>
+		<script src="https://code.highcharts.com/modules/exporting.js"></script>
+		<script src="https://code.highcharts.com/modules/export-data.js"></script>
+	</head>
+	
+	<body>
+		<div class="container-fluid">
+			<h2>URL processing comparision Table (Time is in Milliseconds)</h2>
+			
+			<div class="row">
+				<div class="search">
+					<p>Type some text to search the table for <strong>URI</strong></p>
+					<input class="form-control" id="inputFilter" type="text" placeholder="Search.." />
+				</div>
+				<div id="chart1" class="chart"></div>
+				<div class="col-md-6 form-group">
+					<h3>ModJK</h3>
+					<div class="col-md-12">
+						<table id="customerTable" class="table table-bordered table-hover table-responsive">
+							<thead>
+								<tr>
+									<th>URI</th>
+									<th>ModJK.Avg Time</th>
+									<th>ModJK.Total Time</th>
+									<th>No.Requests</th>
+								</tr>
+							</thead>
+							<tbody>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="col-md-6 form-group">
+					<!-- <div style="margin-bottom:20px; padding:10px; background-color:#336699; color:white;"> -->
+					<!-- <p>Type some text to search the table for <strong>URI</strong>, <strong>Modjk.Avg</strong>, <strong>ModJk.Total</strong>, <strong>ModJk.Count</strong>:</p>   -->
+					<!-- <input class="form-control" id="inputFilter" type="text" placeholder="Search.." /> -->
+					<h3>Mod Proxy</h3>
+					<div class="col-md-12">
+						<table id="proxyTable" class="table table-bordered table-hover table-responsive">
+							<thead>
+								<tr>
+									<th>URI</th>
+									<th>ModProxy.Avg Time</th>
+									<th>ModProxy.Total Time</th>
+									<th>No.Requests</th>
+								</tr>
+							</thead>
+							<tbody>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+		
+		<!-- <script>
+		var openFile = function(event) {
+		var input = event.target;
+		var reader = new FileReader();
+		reader.onload = function(){
+		var text = reader.result;
+		var node = document.getElementById('output');
+		node.innerText = text;
+		console.log(reader.result.substring(0, 200));
+		};
+		reader.readAsText(input.files[0]);
+		};
+		</script>
+	</head>
+	<body>
+		<input type='file'  onchange='openFile(event)'><br>
+		<div id='output'>
+		</div> -->
+		<script type="text/javascript">
+			$(document).ready(function() {
+				var chart;
+				var categories = [];
+				var modjkData = [];
+				var modproxyData = [];
+				var chartData = [];
+				// DO GET
+				$.ajax({
+					type: "GET",
+					url: "api/urls/all",
+					success: function(result) {
+						$.each(result, function(i, data) {
+
+							var customerRow = '<tr>' +
+								'<td>' + data.uri + '</td>' +
+								'<td>' + data.modjk + '</td>' +
+								'<td>' + data.modjkTotal + '</td>' +
+								'<td>' + data.count + '</td>' +
+								'</tr>';
+
+							$('#customerTable tbody').append(customerRow);
+
+						});
+
+						$("#customerTable tbody tr:odd").addClass("info");
+						$("#customerTable tbody tr:even").addClass("success");
+					},
+					error: function(e) {
+						alert("ERROR: ", e);
+						console.log("ERROR: ", e);
+					}
+				});
+				// DO GET
+				$.ajax({
+					type: "GET",
+					url: "api/urls/proxy",
+					success: function(result) {
+						$.each(result, function(i, data) {
+
+							var customerRow = '<tr>' +
+								'<td>' + data.uri + '</td>' +
+								'<td>' + data.modproxy + '</td>' +
+								'<td>' + data.modproxyTotal + '</td>' +
+								'<td>' + data.count + '</td>' +
+								'</tr>';
+
+							$('#proxyTable tbody').append(customerRow);
+
+						});
+
+						$("#proxyTable tbody tr:odd").addClass("info");
+						$("#proxyTable tbody tr:even").addClass("success");
+					},
+					error: function(e) {
+						alert("ERROR: ", e);
+						console.log("ERROR: ", e);
+					}
+				});
+
+				function getMappedData() {
+					$.ajax({
+						url: 'api/urls/mapped',
+						type: 'GET',
+						dataType: "json",
+						success: function(data) {
+							// console.log("Data", data);
+							chartData = data;
+							visitorData1(null);
+							updateChartData();
+						},
+						error: function(e) {
+							alert("ERROR: ", e);
+							console.log("ERROR: ", e);
+						}
+					});
+				}
+				// do Filter on View
+				$("#inputFilter").on("keyup", function() {
+					var inputValue = $(this).val().toLowerCase();
+					$("#customerTable tr").filter(function() {
+						$(this).toggle($(this).text().toLowerCase().indexOf(inputValue) > -1)
+					});
+					$("#proxyTable tr").filter(function() {
+						$(this).toggle($(this).text().toLowerCase().indexOf(inputValue) > -1)
+					});
+					visitorData1(inputValue);
+					updateChartData();
+				});
+
+				function updateChartData()
+				{
+					chart.series[0].setData(modjkData);
+					chart.series[1].setData(modproxyData);	
+				}
+
+				function visitorData(chartData) {
+					var seriesData = [];
+					var categories = [];
+					for (var i = 0; i < 10; i++) {
+						var name = chartData[i].uri;
+						var x = chartData[i].modjk;
+						var y = chartData[i].modproxy;
+						var data = [];
+						data.push(x);
+						data.push(y);
+						categories.push(name);
+						seriesData.push({
+							name,
+							data
+						});
+					}
+					chart = $('#chart1').highcharts({
+						chart: {
+							type: 'bar',
+							events: {
+								load: requestData
+							}
+						},
+						title: {
+							text: 'Average Time Taken for Requests'
+						},
+						xAxis: {
+							categories: ["modjk", "modproxy"],
+							title: {
+								text: "URI"
+							},
+							labels: {
+								formatter: function() {
+									return this.value;
+								}
+							}
+						},
+						plotOptions: {
+							bar: {
+								dataLabels: {
+									enabled: true
+								}
+							}
+						},
+						tooltip: {
+							valueSuffix: ' Microseconds'
+						},
+						yAxis: {
+							// "type": "logarithmic",
+							"minorTickInterval": "auto",
+							title: {
+								text: "Time Taken (in Microseconds)"
+							}
+
+						},
+						series: seriesData,
+					});
+				}
+				chart = Highcharts.chart('chart1', {
+					chart: {
+						type: 'bar',
+						// height: "100%",
+						events: {
+							load: function() {
+								getMappedData();
+								
+								// var modjkSeries = this.series[0];
+								// var modproxySeries = this.series[1];
+								// modjkSeries.setData(modjkData);
+								// modproxySeries.setData(modproxyData);
+								// setInterval(function () {
+								//    	modjkSeries.setData(modjkData);
+								//    	modproxySeries.setData(modproxyData);
+								// 	}, 1000);
+							}
+						}
+					},
+					title: {
+						text: 'Average Time Taken for Requests'
+					},
+					xAxis: {
+						categories: categories,
+						title: {
+							text: "URI"
+						},
+						labels: {
+							formatter: function() {
+								return this.value;
+							}
+						},
+						scrollbar: {
+          					  enabled: true
+        				},
+					},
+					plotOptions: {
+						bar: {
+							dataLabels: {
+								enabled: true
+							}
+						}
+					},
+					tooltip: {
+						valueSuffix: ' Milliseconds'
+					},
+					credits: {
+     				   enabled: false
+    				},
+					yAxis: {
+						// "type": "logarithmic",
+						"minorTickInterval": "auto",
+						title: {
+							text: "Time Taken (in Milliseconds)"
+						}
+
+					},
+					series: [{
+						name: "modjk",
+						data: getModjkData()
+					}, {
+						name: "modproxy",
+						data: getModproxyData()
+					}],
+				});
+
+				function getModjkData() {
+					return modjkData;
+				}
+
+				function getModproxyData() {
+					return modproxyData;
+				}
+
+				function visitorData1(inputValue) {
+					modjkData.length = 0;
+					modproxyData.length = 0;
+					categories.length = 0;
+					for (var i = 0; i < chartData.length; i++) {
+						if (!inputValue)
+						{
+							categories.push(chartData[i].uri);
+							modjkData.push(chartData[i].modjk);
+							modproxyData.push(chartData[i].modproxy);
+						} 
+						else 
+						{
+							if (chartData[i].uri.toLowerCase().indexOf(inputValue) > -1) {
+								categories.push(chartData[i].uri);
+								modjkData.push(chartData[i].modjk);
+								modproxyData.push(chartData[i].modproxy);
+							}
+						} 
+					}
+					// chart.addSeries({name : "modjk",data : modjkData});
+					// chart.addSeries({name : "modproxy",data : modproxyData});
+				}
+
+			})
+		</script>
+	</body>
+</html>
